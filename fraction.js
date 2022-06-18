@@ -160,7 +160,7 @@
             } else if (p1 > 0) { // check for != 0, scale would become NaN (log(0)), which converges really slow
 
               if (p1 >= 1) {
-                z = Math.pow(10, Math.floor(1 + Math.log(p1) / Math.LN10));
+                z = Math.pow(2, Math.floor(1 + Math.log(p1) / Math.LN2));
                 p1/= z;
               }
 
@@ -210,7 +210,31 @@
           }
         case "string":
           {
-            B = p1.match(/\d+|./g);
+            var regex = [
+              null, null,
+              /[01]+|./g, /[012]+|./g,
+              /[0-3]+|./g, /[0-4]+|./g,
+              /[0-5]+|./g, /[0-6]+|./g,
+              /[0-7]+|./g, /[0-8]+|./g,
+              /\d+|./g,
+              // there must be another way to write this.
+              // this is so redundant
+              /[\da]+|./gi,
+              /[\dab]+|./gi, /[\dabc]+|./gi,
+              /[\da-d]+|./gi, /[\da-e]+|./gi,
+              /[\da-f]+|./gi, /[\da-g]+|./gi,
+              /[\da-h]+|./gi, /[\da-i]+|./gi,
+              /[\da-j]+|./gi, /[\da-k]+|./gi,
+              /[\da-l]+|./gi, /[\da-m]+|./gi,
+              /[\da-n]+|./gi, /[\da-o]+|./gi,
+              /[\da-p]+|./gi, /[\da-q]+|./gi,
+              /[\da-r]+|./gi, /[\da-s]+|./gi,
+              /[\da-t]+|./gi, /[\da-u]+|./gi,
+              /[\da-v]+|./gi, /[\da-w]+|./gi,
+              /[\da-x]+|./gi, /[\da-y]+|./gi,
+              /[\da-z]+|./gi
+            ][radix];
+            B = p1.match(regex);
 
             if (B === null)
               throw Fraction['InvalidParameter'];
@@ -291,14 +315,13 @@
   }
 
 
-  function cycleLen(n, d) {
+  function cycleLen(n, d, radix) {
 
-    for (; d % 2 === 0;
-      d/= 2) {
-    }
-
-    for (; d % 5 === 0;
-      d/= 5) {
+    for (var p in factorize(radix)) {
+      p = +p;
+      for (; d % p === 0;
+        d/= p) {
+      }
     }
 
     if (d === 1) // Catch non-cyclic numbers
@@ -309,11 +332,11 @@
     // However, we don't need such large numbers and MAX_CYCLE_LEN should be the capstone,
     // as we want to translate the numbers to strings.
 
-    var rem = 10 % d;
+    var rem = radix % d;
     var t = 1;
 
     for (; rem !== 1; t++) {
-      rem = rem * 10 % d;
+      rem = rem * radix % d;
 
       if (t > MAX_CYCLE_LEN)
         return 0; // Returning 0 here means that we don't print it as a cyclic number. It's likely that the answer is `d-1`
@@ -322,19 +345,20 @@
   }
 
 
-  function cycleStart(n, d, len) {
+  function cycleStart(n, d, len, radix) {
 
     var rem1 = 1;
-    var rem2 = modpow(10, len, d);
+    var rem2 = modpow(radix, len, d);
 
-    for (var t = 0; t < 300; t++) { // s < ~log10(Number.MAX_VALUE)
-      // Solve 10^s == 10^(s+t) (mod d)
+    var s = Math.floor(Math.log(Number.MAX_VALUE) / Math.log(radix)) - 1;
+    for (var t = 0; t < s; t++) { // s < ~log_b(Number.MAX_VALUE)
+      // Solve b^s == b^(s+t) (mod d)
 
       if (rem1 === rem2)
         return t;
 
-      rem1 = rem1 * 10 % d;
-      rem2 = rem2 * 10 % d;
+      rem1 = rem1 * radix % d;
+      rem2 = rem2 * radix % d;
     }
     return 0;
   }
@@ -826,7 +850,11 @@
      *
      * Ex: new Fraction("100.'91823'").toString() => "100.(91823)"
      **/
-    'toString': function(dec) {
+    'toString': function(places, radix) {
+
+      // prevent use of `call` method on other objects
+      // this is the same behavior as [BigInt|Number].prototype.toString
+      if (!(this instanceof Fraction)) throw new TypeError('`this` is not a Fraction');
 
       var N = this["n"];
       var D = this["d"];
@@ -835,17 +863,25 @@
         return "NaN";
       }
 
-      dec = dec || 15; // 15 = decimal places when no repetation
+      places = places || 15; // 15 = decimal places when no repetition
+      radix = radix === undefined ? 10 : Math.trunc(radix) || 0; // toIntegerOrInfinity ES abstract op
 
-      var cycLen = cycleLen(N, D); // Cycle length
-      var cycOff = cycleStart(N, D, cycLen); // Cycle start
+      if (radix < 2 || radix > 36)
+        throw Fraction['InvalidParameter'];
+
+      var cycLen = cycleLen(N, D, radix); // len = length
+      var cycOff = cycleStart(N, D, cycLen, radix);
 
       var str = this['s'] < 0 ? "-" : "";
 
-      str+= N / D | 0;
+      function intStr() {
+        return (N / D | 0).toString(radix);
+      }
+
+      str+= intStr();
 
       N%= D;
-      N*= 10;
+      N*= radix;
 
       if (N)
         str+= ".";
@@ -853,22 +889,22 @@
       if (cycLen) {
 
         for (var i = cycOff; i--;) {
-          str+= N / D | 0;
+          str+= intStr();
           N%= D;
-          N*= 10;
+          N*= radix;
         }
         str+= "(";
         for (var i = cycLen; i--;) {
-          str+= N / D | 0;
+          str+= intStr();
           N%= D;
-          N*= 10;
+          N*= radix;
         }
         str+= ")";
       } else {
-        for (var i = dec; N && i--;) {
-          str+= N / D | 0;
+        for (var i = places; N && i--;) {
+          str+= intStr();
           N%= D;
-          N*= 10;
+          N*= radix;
         }
       }
       return str;

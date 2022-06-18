@@ -44,11 +44,9 @@
   // Set Identity function to downgrade BigInt to Number if needed
   if (!BigInt) BigInt = function(n) { if (isNaN(n)) throw new Error(""); return n; };
 
-  const C_ONE = BigInt(1);
   const C_ZERO = BigInt(0);
-  const C_TEN = BigInt(10);
+  const C_ONE = BigInt(1);
   const C_TWO = BigInt(2);
-  const C_FIVE = BigInt(5);
 
   // Maximum search depth for cyclic rational numbers. 2000 should be more than enough.
   // Example: 1/7 = 0.(142857) has 6 repeating decimal places.
@@ -97,7 +95,7 @@
 
     let n = num;
     let i = C_TWO;
-    let s = C_FIVE - C_ONE;
+    let s = i + i;
 
     while (s <= n) {
 
@@ -117,8 +115,9 @@
     return factors;
   }
 
-  const parse = function(p1, p2) {
+  const parse = function(p1, p2, radix) {
 
+    radix = BigInt(radix || 10)
     let n = C_ZERO, d = C_ONE, s = C_ONE;
 
     if (p1 === undefined || p1 === null) {
@@ -151,7 +150,7 @@
     } else if (typeof p1 === "bigint") {
       n = p1;
       s = p1;
-      d = BigInt(1);
+      d = C_ONE;
     } else if (typeof p1 === "number") {
 
       if (isNaN(p1)) {
@@ -175,7 +174,7 @@
         let N = 10000000;
 
         if (p1 >= 1) {
-          z = 10 ** Math.floor(1 + Math.log10(p1));
+          z = 2 ** Math.floor(1 + Math.log(p1) / Math.LN2);
           p1/= z;
         }
 
@@ -227,7 +226,31 @@
 
       let v = C_ZERO, w = C_ZERO, x = C_ZERO, y = C_ONE, z = C_ONE;
 
-      let match = p1.match(/\d+|./g);
+      const regex = [
+        null, null,
+        /[01]+|./g, /[012]+|./g,
+        /[0-3]+|./g, /[0-4]+|./g,
+        /[0-5]+|./g, /[0-6]+|./g,
+        /[0-7]+|./g, /[0-8]+|./g,
+        /\d+|./g,
+        // there must be another way to write this.
+        // this is so redundant
+        /[\da]+|./gi,
+        /[\dab]+|./gi, /[\dabc]+|./gi,
+        /[\da-d]+|./gi, /[\da-e]+|./gi,
+        /[\da-f]+|./gi, /[\da-g]+|./gi,
+        /[\da-h]+|./gi, /[\da-i]+|./gi,
+        /[\da-j]+|./gi, /[\da-k]+|./gi,
+        /[\da-l]+|./gi, /[\da-m]+|./gi,
+        /[\da-n]+|./gi, /[\da-o]+|./gi,
+        /[\da-p]+|./gi, /[\da-q]+|./gi,
+        /[\da-r]+|./gi, /[\da-s]+|./gi,
+        /[\da-t]+|./gi, /[\da-u]+|./gi,
+        /[\da-v]+|./gi, /[\da-w]+|./gi,
+        /[\da-x]+|./gi, /[\da-y]+|./gi,
+        /[\da-z]+|./gi
+      ][radix];
+      let match = p1.match(regex);
 
       if (match === null)
         throw Fraction['InvalidParameter'];
@@ -251,14 +274,14 @@
         // Check for decimal places
         if (ndx + 1 === match.length || match[ndx + 1] === '(' && match[ndx + 3] === ')' || match[ndx + 1] === "'" && match[ndx + 3] === "'") {
           w = assign(match[ndx], s);
-          y = C_TEN ** BigInt(match[ndx].length);
+          y = radix ** BigInt(match[ndx].length);
           ndx++;
         }
 
         // Check for repeating places
         if (match[ndx] === '(' && match[ndx + 2] === ')' || match[ndx] === "'" && match[ndx + 2] === "'") {
           x = assign(match[ndx + 1], s);
-          z = C_TEN ** BigInt(match[ndx + 1].length) - C_ONE;
+          z = radix ** BigInt(match[ndx + 1].length) - C_ONE;
           ndx+= 3;
         }
 
@@ -306,29 +329,28 @@
     return r;
   }
 
-  function cycleLen(n, d) {
+  function cycleLen(n, d, radix) {
 
-    for (; d % C_TWO === C_ZERO;
-      d/= C_TWO) {
-    }
-
-    for (; d % C_FIVE === C_ZERO;
-      d/= C_FIVE) {
+    for (let p in factorize(radix)) {
+      p = BigInt(p);
+      for (; d % p === C_ZERO;
+        d/= p) {
+      }
     }
 
     if (d === C_ONE) // Catch non-cyclic numbers
       return C_ZERO;
 
     // If we would like to compute really large numbers quicker, we could make use of Fermat's little theorem:
-    // 10^(d-1) % d == 1
+    // b^(d-1) % d == 1
     // However, we don't need such large numbers and MAX_CYCLE_LEN should be the capstone,
     // as we want to translate the numbers to strings.
 
-    let rem = C_TEN % d;
+    let rem = radix % d;
     let t = 1;
 
     for (; rem !== C_ONE; t++) {
-      rem = rem * C_TEN % d;
+      rem = rem * radix % d;
 
       if (t > MAX_CYCLE_LEN)
         return C_ZERO; // Returning 0 here means that we don't print it as a cyclic number. It's likely that the answer is `d-1`
@@ -336,19 +358,20 @@
     return BigInt(t);
   }
 
-  function cycleStart(n, d, len) {
+  function cycleStart(n, d, len, radix) {
 
     let rem1 = C_ONE;
-    let rem2 = modpow(C_TEN, len, d);
+    let rem2 = modpow(radix, len, d);
 
-    for (let t = 0; t < 300; t++) { // s < ~log10(Number.MAX_VALUE)
-      // Solve 10^s == 10^(s+t) (mod d)
+    const s = Math.floor(Math.log2(Number.MAX_VALUE) / Math.log2(Number(radix))) - 1;
+    for (let t = 0; t < s; t++) { // s < ~log_b(Number.MAX_VALUE)
+      // Solve b^s == b^(s+t) (mod d)
 
       if (rem1 === rem2)
         return BigInt(t);
 
-      rem1 = rem1 * C_TEN % d;
-      rem2 = rem2 * C_TEN % d;
+      rem1 = rem1 * radix % d;
+      rem2 = rem2 * radix % d;
     }
     return 0;
   }
@@ -368,6 +391,10 @@
       if (!b)
         return a;
     }
+  }
+
+  function truncNumeric(x) {
+    return typeof x === 'bigint' ? x : Math.trunc(x);
   }
 
   /**
@@ -656,9 +683,9 @@
      *
      * Ex: new Fraction('4.(3)').ceil() => (5 / 1)
      **/
-    "ceil": function(places) {
+    "ceil": function(places, radix) {
 
-      places = C_TEN ** BigInt(places || 0);
+      places = BigInt(radix || 10) ** BigInt(places || 0);
 
       return newFraction(this["s"] * places * this["n"] / this["d"] +
         (places * this["n"] % this["d"] > C_ZERO && this["s"] >= C_ZERO ? C_ONE : C_ZERO),
@@ -670,9 +697,9 @@
      *
      * Ex: new Fraction('4.(3)').floor() => (4 / 1)
      **/
-    "floor": function(places) {
+    "floor": function(places, radix) {
 
-      places = C_TEN ** BigInt(places || 0);
+      places = BigInt(radix || 10) ** BigInt(places || 0);
 
       return newFraction(this["s"] * places * this["n"] / this["d"] -
         (places * this["n"] % this["d"] > C_ZERO && this["s"] < C_ZERO ? C_ONE : C_ZERO),
@@ -684,9 +711,9 @@
      *
      * Ex: new Fraction('4.(3)').round() => (4 / 1)
      **/
-    "round": function(places) {
+    "round": function(places, radix) {
 
-      places = C_TEN ** BigInt(places || 0);
+      places = BigInt(radix || 10) ** BigInt(places || 0);
 
       /* Derivation:
 
@@ -734,23 +761,36 @@
      *
      * Ex: new Fraction("100.'91823'").toString() => "100.(91823)"
      **/
-    'toString': function(dec) {
+    'toString': function(places, radix) {
+
+      // prevent use of `call` method on other objects
+      // this is the same behavior as [BigInt|Number].prototype.toString
+      if (!(this instanceof Fraction)) throw new TypeError('`this` is not a Fraction');
 
       let N = this["n"];
       let D = this["d"];
 
-      dec = dec || 15; // 15 = decimal places when no repitation
+      places = places || 15; // 15 = base places when no repetition
+      radix = radix === undefined ? 10 : Math.trunc(radix) || 0; // toIntegerOrInfinity ES abstract op
 
-      let cycLen = cycleLen(N, D); // Cycle length
-      let cycOff = cycleStart(N, D, cycLen); // Cycle start
+      if (radix < 2 || radix > 36)
+        throw Fraction['InvalidParameter'];
+
+      const base = BigInt(radix)
+
+      let cycLen = cycleLen(N, D, base); // len = length
+      let cycOff = cycleStart(N, D, cycLen, base);
 
       let str = this['s'] < C_ZERO ? "-" : "";
 
-      // Append integer part
-      str+= N / D;
+      function intStr() {
+        return truncNumeric(N / D).toString(radix);
+      }
+
+      str+= intStr();
 
       N%= D;
-      N*= C_TEN;
+      N*= base;
 
       if (N)
         str+= ".";
@@ -758,22 +798,22 @@
       if (cycLen) {
 
         for (let i = cycOff; i--;) {
-          str+= N / D;
+          str+= intStr();
           N%= D;
-          N*= C_TEN;
+          N*= base;
         }
         str+= "(";
         for (let i = cycLen; i--;) {
-          str+= N / D;
+          str+= intStr();
           N%= D;
-          N*= C_TEN;
+          N*= base;
         }
         str+= ")";
       } else {
-        for (let i = dec; N && i--;) {
-          str+= N / D;
+        for (let i = places; N && i--;) {
+          str+= intStr();
           N%= D;
-          N*= C_TEN;
+          N*= base;
         }
       }
       return str;
