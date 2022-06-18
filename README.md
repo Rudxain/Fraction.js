@@ -1,5 +1,5 @@
 # About this branch
-This is my personal branch and it's only for the development of the `radix`/`base` feature. This is because [Infusion decided it's not worth implementing](https://github.com/infusion/Fraction.js/issues/6#issuecomment-120950346)
+This is my personal branch and it's only for the development of the `radix`/`base` feature (WIP). This is because [Infusion decided it's not worth implementing](https://github.com/infusion/Fraction.js/issues/6#issuecomment-120950346)
 
 # Fraction.js - ℚ in JavaScript
 
