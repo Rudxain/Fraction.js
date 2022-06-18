@@ -174,7 +174,7 @@
         let N = 10000000;
 
         if (p1 >= 1) {
-          z = 2 ** Math.floor(1 + Math.log(p1) / Math.LN2);
+          z = 2 ** Math.floor(1 + Math.log2(p1));
           p1/= z;
         }
 
