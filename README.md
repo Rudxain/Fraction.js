@@ -1,3 +1,6 @@
+# About this branch
+This is my personal branch and it's only for the development of the `radix`/`base` feature. This is because [Infusion decided it's not worth implementing](https://github.com/infusion/Fraction.js/issues/6#issuecomment-120950346)
+
 # Fraction.js - ℚ in JavaScript
 
 [![NPM Package](https://nodei.co/npm-dl/fraction.js.png?months=6&height=1)](https://npmjs.org/package/fraction.js)
@@ -349,15 +352,15 @@ Fraction lcm(n)
 ---
 Returns the fractional least common multiple
 
-Fraction ceil([places=0-16])
+Fraction ceil([places=0-16], [base=10])
 ---
 Returns the ceiling of a rational number with Math.ceil
 
-Fraction floor([places=0-16])
+Fraction floor([places=0-16], [base=10])
 ---
 Returns the floor of a rational number with Math.floor
 
-Fraction round([places=0-16])
+Fraction round([places=0-16], [base=10])
 ---
 Returns the rational number rounded with Math.round
 
