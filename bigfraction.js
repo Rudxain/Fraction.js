@@ -44,9 +44,12 @@
   // Set Identity function to downgrade BigInt to Number if needed
   if (!BigInt) BigInt = function(n) { if (isNaN(n)) throw new Error(""); return n; };
 
-  const C_ZERO = BigInt(0);
   const C_ONE = BigInt(1);
+  const C_ZERO = BigInt(0);
+  const C_TEN = BigInt(10);
   const C_TWO = BigInt(2);
+  const C_FIVE = BigInt(5);
+  const C_THREE = BigInt(3);
 
   // Maximum search depth for cyclic rational numbers. 2000 should be more than enough.
   // Example: 1/7 = 0.(142857) has 6 repeating decimal places.
@@ -95,7 +98,7 @@
 
     let n = num;
     let i = C_TWO;
-    let s = i + i;
+    let s = C_FIVE - C_ONE; // i + i == 4
 
     while (s <= n) {
 
@@ -117,7 +120,6 @@
 
   const parse = function(p1, p2, radix) {
 
-    radix = BigInt(radix || 10)
     let n = C_ZERO, d = C_ONE, s = C_ONE;
 
     if (p1 === undefined || p1 === null) {
@@ -171,7 +173,7 @@
         let A = 0, B = 1;
         let C = 1, D = 1;
 
-        let N = 10000000;
+        let N = Number(radix) ** 7;
 
         if (p1 >= 1) {
           z = 2 ** Math.floor(1 + Math.log2(p1));
@@ -226,30 +228,8 @@
 
       let v = C_ZERO, w = C_ZERO, x = C_ZERO, y = C_ONE, z = C_ONE;
 
-      const regex = [
-        null, null,
-        /[01]+|./g, /[012]+|./g,
-        /[0-3]+|./g, /[0-4]+|./g,
-        /[0-5]+|./g, /[0-6]+|./g,
-        /[0-7]+|./g, /[0-8]+|./g,
-        /\d+|./g,
-        // there must be another way to write this.
-        // this is so redundant
-        /[\da]+|./gi,
-        /[\dab]+|./gi, /[\dabc]+|./gi,
-        /[\da-d]+|./gi, /[\da-e]+|./gi,
-        /[\da-f]+|./gi, /[\da-g]+|./gi,
-        /[\da-h]+|./gi, /[\da-i]+|./gi,
-        /[\da-j]+|./gi, /[\da-k]+|./gi,
-        /[\da-l]+|./gi, /[\da-m]+|./gi,
-        /[\da-n]+|./gi, /[\da-o]+|./gi,
-        /[\da-p]+|./gi, /[\da-q]+|./gi,
-        /[\da-r]+|./gi, /[\da-s]+|./gi,
-        /[\da-t]+|./gi, /[\da-u]+|./gi,
-        /[\da-v]+|./gi, /[\da-w]+|./gi,
-        /[\da-x]+|./gi, /[\da-y]+|./gi,
-        /[\da-z]+|./gi
-      ][radix];
+      const digits = '0123456789abcdefghijklmnopqrstuvwxyz';
+      const regex = RegExp('[' + digits.substring(0, radix) + ']+|.', 'gi');
       let match = p1.match(regex);
 
       if (match === null)
@@ -393,8 +373,8 @@
     }
   }
 
-  function truncNumeric(x) {
-    return typeof x === 'bigint' ? x : Math.trunc(x);
+  function trunc(x) {
+    return typeof x === 'bigint' ? x : x - x % 1;
   }
 
   /**
@@ -763,31 +743,27 @@
      **/
     'toString': function(places, radix) {
 
-      // prevent use of `call` method on other objects
-      // this is the same behavior as [BigInt|Number].prototype.toString
-      if (!(this instanceof Fraction)) throw new TypeError('`this` is not a Fraction');
-
       let N = this["n"];
       let D = this["d"];
 
-      places = places || 15; // 15 = base places when no repetition
-      radix = radix === undefined ? 10 : Math.trunc(radix) || 0; // toIntegerOrInfinity ES abstract op
+      places = places || 15; // 15 = digit places when no repetition
+      radix = radix === undefined ? 10 : trunc(+radix) || 0; // toIntegerOrInfinity ES abstract op
 
       if (radix < 2 || radix > 36)
         throw Fraction['InvalidParameter'];
 
       const base = BigInt(radix)
 
-      let cycLen = cycleLen(N, D, base); // len = length
-      let cycOff = cycleStart(N, D, cycLen, base);
+      let cycLen = cycleLen(N, D, base); // Cycle length
+      let cycOff = cycleStart(N, D, cycLen, base); // Cycle start
 
       let str = this['s'] < C_ZERO ? "-" : "";
 
-      function intStr() {
-        return truncNumeric(N / D).toString(radix);
+      function intDivStr(N, D, radix) {
+        return trunc(N / D).toString(radix);
       }
 
-      str+= intStr();
+      str+= intDivStr(N, D, radix);
 
       N%= D;
       N*= base;
@@ -798,20 +774,20 @@
       if (cycLen) {
 
         for (let i = cycOff; i--;) {
-          str+= intStr();
+          str+= intDivStr(N, D, radix);
           N%= D;
           N*= base;
         }
         str+= "(";
         for (let i = cycLen; i--;) {
-          str+= intStr();
+          str+= intDivStr(N, D, radix);
           N%= D;
           N*= base;
         }
         str+= ")";
       } else {
         for (let i = places; N && i--;) {
-          str+= intStr();
+          str+= intDivStr(N, D, radix);
           N%= D;
           N*= base;
         }
