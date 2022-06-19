@@ -63,10 +63,10 @@
     "d": C_ONE
   };
 
-  function assign(n, s) {
+  function assign(n, s, radix) {
 
     try {
-      n = BigInt(n);
+      n = BigInt(n, radix);
     } catch (e) {
       throw Fraction['InvalidParameter'];
     }
@@ -243,36 +243,36 @@
       }
 
       if (match.length === ndx + 1) { // Check if it's just a simple number "1234"
-        w = assign(match[ndx++], s);
-      } else if (match[ndx + 1] === '.' || match[ndx] === '.') { // Check if it's a decimal number
+        w = assign(match[ndx++], s, radix);
+      } else if (match[ndx + 1] === '.' || match[ndx] === '.') { // Check if it's non-integer
 
         if (match[ndx] !== '.') { // Handle 0.5 and .5
-          v = assign(match[ndx++], s);
+          v = assign(match[ndx++], s, radix);
         }
         ndx++;
 
-        // Check for decimal places
+        // Check for radix places
         if (ndx + 1 === match.length || match[ndx + 1] === '(' && match[ndx + 3] === ')' || match[ndx + 1] === "'" && match[ndx + 3] === "'") {
-          w = assign(match[ndx], s);
+          w = assign(match[ndx], s, radix);
           y = radix ** BigInt(match[ndx].length);
           ndx++;
         }
 
         // Check for repeating places
         if (match[ndx] === '(' && match[ndx + 2] === ')' || match[ndx] === "'" && match[ndx + 2] === "'") {
-          x = assign(match[ndx + 1], s);
+          x = assign(match[ndx + 1], s, radix);
           z = radix ** BigInt(match[ndx + 1].length) - C_ONE;
           ndx+= 3;
         }
 
       } else if (match[ndx + 1] === '/' || match[ndx + 1] === ':') { // Check for a simple fraction "123/456" or "123:456"
-        w = assign(match[ndx], s);
-        y = assign(match[ndx + 2], C_ONE);
+        w = assign(match[ndx], s, radix);
+        y = assign(match[ndx + 2], C_ONE, radix);
         ndx+= 3;
       } else if (match[ndx + 3] === '/' && match[ndx + 1] === ' ') { // Check for a complex fraction "123 1/2"
-        v = assign(match[ndx], s);
-        w = assign(match[ndx + 2], s);
-        y = assign(match[ndx + 4], C_ONE);
+        v = assign(match[ndx], s, radix);
+        w = assign(match[ndx + 2], s, radix);
+        y = assign(match[ndx + 4], C_ONE, radix);
         ndx+= 5;
       }
 

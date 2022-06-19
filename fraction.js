@@ -53,9 +53,9 @@
     "d": 1
   };
 
-  function assign(n, s) {
+  function assign(n, s, radix) {
 
-    if (isNaN(n = parseInt(n, 10))) {
+    if (isNaN(n = parseInt(n, radix))) {
       throw Fraction['InvalidParameter'];
     }
     return n * s;
@@ -106,7 +106,7 @@
     return factors;
   }
 
-  var parse = function(p1, p2) {
+  var parse = function(p1, p2, radix) {
 
     var n = 0, d = 1, s = 1;
     var v = 0, w = 0, x = 0, y = 1, z = 1;
@@ -114,7 +114,7 @@
     var A = 0, B = 1;
     var C = 1, D = 1;
 
-    var N = 10000000;
+    var N = Math.pow(radix, 7);
     var M;
 
     if (p1 === undefined || p1 === null) {
@@ -225,36 +225,36 @@
             }
 
             if (B.length === A + 1) { // Check if it's just a simple number "1234"
-              w = assign(B[A++], s);
+              w = assign(B[A++], s, radix);
             } else if (B[A + 1] === '.' || B[A] === '.') { // Check if it's a decimal number
 
               if (B[A] !== '.') { // Handle 0.5 and .5
-                v = assign(B[A++], s);
+                v = assign(B[A++], s, radix);
               }
               A++;
 
               // Check for decimal places
               if (A + 1 === B.length || B[A + 1] === '(' && B[A + 3] === ')' || B[A + 1] === "'" && B[A + 3] === "'") {
-                w = assign(B[A], s);
-                y = Math.pow(10, B[A].length);
+                w = assign(B[A], s, radix);
+                y = Math.pow(radix, B[A].length);
                 A++;
               }
 
               // Check for repeating places
               if (B[A] === '(' && B[A + 2] === ')' || B[A] === "'" && B[A + 2] === "'") {
-                x = assign(B[A + 1], s);
-                z = Math.pow(10, B[A + 1].length) - 1;
+                x = assign(B[A + 1], s, radix);
+                z = Math.pow(radix, B[A + 1].length) - 1;
                 A+= 3;
               }
 
             } else if (B[A + 1] === '/' || B[A + 1] === ':') { // Check for a simple fraction "123/456" or "123:456"
-              w = assign(B[A], s);
-              y = assign(B[A + 2], 1);
+              w = assign(B[A], s, radix);
+              y = assign(B[A + 2], 1, radix);
               A+= 3;
             } else if (B[A + 3] === '/' && B[A + 1] === ' ') { // Check for a complex fraction "123 1/2"
-              v = assign(B[A], s);
-              w = assign(B[A + 2], s);
-              y = assign(B[A + 4], 1);
+              v = assign(B[A], s, radix);
+              w = assign(B[A + 2], s, radix);
+              y = assign(B[A + 4], 1, radix);
               A+= 5;
             }
 
@@ -306,7 +306,7 @@
       return 0;
 
     // If we would like to compute really large numbers quicker, we could make use of Fermat's little theorem:
-    // 10^(d-1) % d == 1
+    // b^(d-1) % d == 1
     // However, we don't need such large numbers and MAX_CYCLE_LEN should be the capstone,
     // as we want to translate the numbers to strings.
 
@@ -357,6 +357,17 @@
         return a;
     }
   };
+
+  function trunc(x) {
+    return x - x % 1;
+  }
+
+  function intDivStr(n, d, radix) {
+    return (n / d | 0).toString(radix);
+  }
+  function truncDivStr(n, d, radix) {
+    return trunc(n / d).toString(radix);
+  }
 
   /**
    * Module constructor
@@ -550,9 +561,13 @@
      *
      * Ex: new Fraction('4.(3)').ceil() => (5 / 1)
      **/
-    "ceil": function(places) {
+    "ceil": function(places, radix) {
 
-      places = Math.pow(10, places || 0);
+      radix = trunc(radix || 10);
+      if (radix < 2 || radix > 36)
+        throw Fraction['InvalidParameter'];
+
+      places = Math.pow(radix, places || 0);
 
       if (isNaN(this["n"]) || isNaN(this["d"])) {
         return new Fraction(NaN);
@@ -565,9 +580,13 @@
      *
      * Ex: new Fraction('4.(3)').floor() => (4 / 1)
      **/
-    "floor": function(places) {
+    "floor": function(places, radix) {
 
-      places = Math.pow(10, places || 0);
+      radix = trunc(radix || 10);
+      if (radix < 2 || radix > 36)
+        throw Fraction['InvalidParameter'];
+
+      places = Math.pow(radix, places || 0);
 
       if (isNaN(this["n"]) || isNaN(this["d"])) {
         return new Fraction(NaN);
@@ -580,9 +599,13 @@
      *
      * Ex: new Fraction('4.(3)').round() => (4 / 1)
      **/
-    "round": function(places) {
+    "round": function(places, radix) {
 
-      places = Math.pow(10, places || 0);
+      radix = trunc(radix || 10);
+      if (radix < 2 || radix > 36)
+        throw Fraction['InvalidParameter'];
+
+      places = Math.pow(radix, places || 0);
 
       if (isNaN(this["n"]) || isNaN(this["d"])) {
         return new Fraction(NaN);
@@ -830,10 +853,6 @@
      **/
     'toString': function(places, radix) {
 
-      // prevent use of `call` method on other objects
-      // this is the same behavior as [BigInt|Number].prototype.toString
-      if (!(this instanceof Fraction)) throw new TypeError('`this` is not a Fraction');
-
       var N = this["n"];
       var D = this["d"];
 
@@ -842,21 +861,17 @@
       }
 
       places = places || 15; // 15 = decimal places when no repetition
-      radix = radix === undefined ? 10 : Math.trunc(radix) || 0; // toIntegerOrInfinity ES abstract op
+      radix = trunc(radix || 10);
 
       if (radix < 2 || radix > 36)
         throw Fraction['InvalidParameter'];
 
-      var cycLen = cycleLen(N, D, radix); // len = length
-      var cycOff = cycleStart(N, D, cycLen, radix);
+      var cycLen = cycleLen(N, D, radix); // Cycle length
+      var cycOff = cycleStart(N, D, cycLen, radix); // Cycle start
 
       var str = this['s'] < 0 ? "-" : "";
 
-      function intStr() {
-        return (N / D | 0).toString(radix);
-      }
-
-      str+= intStr();
+      str+= intDivStr(N, D, radix);
 
       N%= D;
       N*= radix;
@@ -867,20 +882,20 @@
       if (cycLen) {
 
         for (var i = cycOff; i--;) {
-          str+= intStr();
+          str+= intDivStr(N, D, radix);
           N%= D;
           N*= radix;
         }
         str+= "(";
         for (var i = cycLen; i--;) {
-          str+= intStr();
+          str+= intDivStr(N, D, radix);
           N%= D;
           N*= radix;
         }
         str+= ")";
       } else {
         for (var i = places; N && i--;) {
-          str+= intStr();
+          str+= intDivStr(N, D, radix);
           N%= D;
           N*= radix;
         }
