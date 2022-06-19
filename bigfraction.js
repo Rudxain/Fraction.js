@@ -377,6 +377,10 @@
     return typeof x === 'bigint' ? x : x - x % 1;
   }
 
+  function intDivStr(n, d, radix) {
+    return trunc(n / d).toString(radix);
+  }
+
   /**
    * Module constructor
    *
@@ -665,7 +669,11 @@
      **/
     "ceil": function(places, radix) {
 
-      places = BigInt(radix || 10) ** BigInt(places || 0);
+      radix = trunc(radix || 10);
+      if (radix < 2 || radix > 36)
+        throw Fraction['InvalidParameter'];
+
+      places = BigInt(radix) ** BigInt(places || 0);
 
       return newFraction(this["s"] * places * this["n"] / this["d"] +
         (places * this["n"] % this["d"] > C_ZERO && this["s"] >= C_ZERO ? C_ONE : C_ZERO),
@@ -679,7 +687,11 @@
      **/
     "floor": function(places, radix) {
 
-      places = BigInt(radix || 10) ** BigInt(places || 0);
+      radix = trunc(radix || 10);
+      if (radix < 2 || radix > 36)
+        throw Fraction['InvalidParameter'];
+
+      places = BigInt(radix) ** BigInt(places || 0);
 
       return newFraction(this["s"] * places * this["n"] / this["d"] -
         (places * this["n"] % this["d"] > C_ZERO && this["s"] < C_ZERO ? C_ONE : C_ZERO),
@@ -693,7 +705,11 @@
      **/
     "round": function(places, radix) {
 
-      places = BigInt(radix || 10) ** BigInt(places || 0);
+      radix = trunc(radix || 10);
+      if (radix < 2 || radix > 36)
+        throw Fraction['InvalidParameter'];
+
+      places = BigInt(radix) ** BigInt(places || 0);
 
       /* Derivation:
 
@@ -747,7 +763,7 @@
       let D = this["d"];
 
       places = places || 15; // 15 = digit places when no repetition
-      radix = radix === undefined ? 10 : trunc(+radix) || 0; // toIntegerOrInfinity ES abstract op
+      radix = Number(trunc(radix || 10));
 
       if (radix < 2 || radix > 36)
         throw Fraction['InvalidParameter'];
@@ -758,10 +774,6 @@
       let cycOff = cycleStart(N, D, cycLen, base); // Cycle start
 
       let str = this['s'] < C_ZERO ? "-" : "";
-
-      function intDivStr(N, D, radix) {
-        return trunc(N / D).toString(radix);
-      }
 
       str+= intDivStr(N, D, radix);
 
@@ -800,25 +812,25 @@
      *
      * Ex: new Fraction("1.'3'").toFraction() => "4 1/3"
      **/
-    'toFraction': function(excludeWhole) {
+    'toFraction': function(excludeWhole, radix) {
 
       let n = this["n"];
       let d = this["d"];
       let str = this['s'] < C_ZERO ? "-" : "";
 
       if (d === C_ONE) {
-        str+= n;
+        str+= n.toString(radix);
       } else {
-        let whole = n / d;
+        let whole = trunc(n / d);
         if (excludeWhole && whole > C_ZERO) {
-          str+= whole;
+          str+= whole.toString(radix);
           str+= " ";
-          n%= d;
+          n%= d.toString(radix);
         }
 
-        str+= n;
+        str+= n.toString(radix);
         str+= '/';
-        str+= d;
+        str+= d.toString(radix);
       }
       return str;
     },
@@ -837,7 +849,7 @@
       if (d === C_ONE) {
         str+= n;
       } else {
-        let whole = n / d;
+        let whole = trunc(n / d);
         if (excludeWhole && whole > C_ZERO) {
           str+= whole;
           n%= d;
