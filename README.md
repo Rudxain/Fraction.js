@@ -13,7 +13,6 @@ Tired of inprecise numbers represented by doubles, which have to store rational 
 
 ```js
 1 / 98 * 98 // = 0.9999999999999999
-0.1 + 0.2 != 0.3 // true
 ```
 
 If you need more precision or just want a fraction as a result, have a look at *Fraction.js*:
