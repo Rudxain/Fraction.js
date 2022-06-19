@@ -229,7 +229,7 @@
       let v = C_ZERO, w = C_ZERO, x = C_ZERO, y = C_ONE, z = C_ONE;
 
       const digits = '0123456789abcdefghijklmnopqrstuvwxyz';
-      const regex = RegExp('[' + digits.substring(0, radix) + ']+|.', 'gi');
+      const regex = RegExp('[' + digits.substring(0, Number(radix)) + ']+|.', 'gi');
       let match = p1.match(regex);
 
       if (match === null)
