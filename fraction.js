@@ -210,30 +210,8 @@
           }
         case "string":
           {
-            var regex = [
-              null, null,
-              /[01]+|./g, /[012]+|./g,
-              /[0-3]+|./g, /[0-4]+|./g,
-              /[0-5]+|./g, /[0-6]+|./g,
-              /[0-7]+|./g, /[0-8]+|./g,
-              /\d+|./g,
-              // there must be another way to write this.
-              // this is so redundant
-              /[\da]+|./gi,
-              /[\dab]+|./gi, /[\dabc]+|./gi,
-              /[\da-d]+|./gi, /[\da-e]+|./gi,
-              /[\da-f]+|./gi, /[\da-g]+|./gi,
-              /[\da-h]+|./gi, /[\da-i]+|./gi,
-              /[\da-j]+|./gi, /[\da-k]+|./gi,
-              /[\da-l]+|./gi, /[\da-m]+|./gi,
-              /[\da-n]+|./gi, /[\da-o]+|./gi,
-              /[\da-p]+|./gi, /[\da-q]+|./gi,
-              /[\da-r]+|./gi, /[\da-s]+|./gi,
-              /[\da-t]+|./gi, /[\da-u]+|./gi,
-              /[\da-v]+|./gi, /[\da-w]+|./gi,
-              /[\da-x]+|./gi, /[\da-y]+|./gi,
-              /[\da-z]+|./gi
-            ][radix];
+            var digits = '0123456789abcdefghijklmnopqrstuvwxyz';
+            var regex = RegExp('[' + digits.substring(0, radix) + ']+|.', 'gi');
             B = p1.match(regex);
 
             if (B === null)
